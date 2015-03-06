@@ -2,57 +2,68 @@
 
 void *taxi_thread_function(void *arg)
 {
-	fprintf(stdout, "Taxi starting!\n");
+	int taxi_id = (int) arg;
+	fprintf(stdout, "Taxi %d starting!\n", taxi_id);
 
-	pthread_exit("Taxi shutting down.\n");
+	fprintf(stdout, "Taxi shutting down.\n");
+
+	pthread_exit(NULL);
 }
 
 int main(int argc, char* argv[])
 {
-	if(argc < 2)
-	{
-		fprintf(stderr, "Incorrect number of arguments\n");
-		return EXIT_FAILURE;
-	}
+	EXITWITHFAILUREIF(argc < 2, "Incorrect number of arguments\n");
 
 	int n_taxis = atoi(argv[1]);
-	if(n_taxis <= 0)
-	{
-		fprintf(stderr, "Must specify more than zero taxis\n");
-		return EXIT_FAILURE;
-	}
+	EXITWITHFAILUREIF(0 >= n_taxis, "Must specify more than zero taxis\n");
 
 	fprintf(stdout, "Using %d taxi(s)\n", n_taxis);
 
 	FILE *queue_file = fopen("taxi_queue.txt", "r+");
-	if(!queue_file)
+	EXITWITHFAILUREIF(!queue_file, 
+		"An error occurred closing the queue file\n");
+
+	// Read file into queue
+	char name[BUFFER_SIZE];
+	int time, duration;
+	while(3 == fscanf(queue_file, "%d\t%s\t%d", &time, name, &duration))
 	{
-		fprintf(stderr, "An error occurred closing the queue file\n");
-		return EXIT_FAILURE;
+		fprintf(stdout, "Time: %d, Name: %s, Duration: %d\n", time, name, duration);
+
+		TaxiRequest request;
+		request.order_time = time;
+		request.duration = duration;
+		strcpy(request.requester, name);
+
+		// TODO: populate queue
 	}
 
-	// TODO: read file into queue
 
-	int close_status = fclose(queue_file);
-	if(0 != close_status)
-	{
-		fprintf(stderr, "An error occurred closing the queue file\n");
-		return EXIT_FAILURE;
-	}
+	EXITWITHFAILUREIF(0 != fclose(queue_file), 
+		"An error occurred closing the queue file\n");
 
+	pthread_t taxi_thread[n_taxis];
 	int i;
 	for(i = 0; i < n_taxis; i++)
 	{
-		pthread_t taxi_thread;
-		int thread_create_result = pthread_create(&taxi_thread, NULL,
-			taxi_thread_function, NULL);
+		int thread_create_result = pthread_create(&taxi_thread[i], NULL,
+			taxi_thread_function, (void *) i + 1);
 
-		if(thread_create_result != 0)
-		{
-			fprintf(stderr, "An error occurred while creating a thread\n");
-			return EXIT_FAILURE;
-		}
+		EXITWITHFAILUREIF(thread_create_result != 0, 
+			"An error occurred while creating a thread\n");
 	}
+
+	fprintf(stdout, "Taxis dispatched; waiting...\n");
+
+	for(i = 0; i < n_taxis; i++)
+	{
+		int thread_join_result = pthread_join(taxi_thread[i], NULL);
+
+		EXITWITHFAILUREIF(0 != thread_join_result, 
+			"An error occurred while joining a thread\n");
+	}
+
+	// TODO: destroy queue
 
 	fprintf(stdout, "Done!\n");
 
