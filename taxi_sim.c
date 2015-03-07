@@ -5,8 +5,21 @@ void *taxi_thread_function(void *arg)
 	int taxi_id = (int) arg;
 	fprintf(stdout, "Taxi %d starting!\n", taxi_id);
 
-	fprintf(stdout, "Taxi shutting down.\n");
+	while(NULL != request_queue)
+	{
+		// Get request details and then free it
+		// TODO: this will likely be critical section
+		TaxiRequest *request = request_queue;
+		char *name = request -> requester;
+		int drive_time = request -> duration;
+		request_queue = request -> next_request;
+		free(request);
 
+		fprintf(stdout, "Taxi %d picking up %s...\n", taxi_id, name);
+		sleep(drive_time);
+	}
+
+	fprintf(stdout, "Taxi %d shutting down.\n", taxi_id);
 	pthread_exit(NULL);
 }
 
@@ -26,18 +39,29 @@ int main(int argc, char* argv[])
 	// Read file into queue
 	char name[BUFFER_SIZE];
 	int time, duration;
+	TaxiRequest *request = request_queue;
 	while(3 == fscanf(queue_file, "%d\t%s\t%d", &time, name, &duration))
 	{
-		fprintf(stdout, "Time: %d, Name: %s, Duration: %d\n", time, name, duration);
+		//fprintf(stdout, "Time: %d, Name: %s, Duration: %d\n", time, name, duration);
 
-		TaxiRequest request;
-		request.order_time = time;
-		request.duration = duration;
-		strcpy(request.requester, name);
+		TaxiRequest *prev_request = request;
+		request = malloc(sizeof(TaxiRequest));
+		request -> order_time = time;
+		request -> duration = duration;
+		strcpy(request -> requester, name);
+		request -> next_request = NULL;
 
-		// TODO: populate queue
+		if(NULL == request_queue)
+		{
+			request_queue = request;
+		}
+		else
+		{
+			prev_request -> next_request = request;
+		}
+
+		prev_request = request;
 	}
-
 
 	EXITWITHFAILUREIF(0 != fclose(queue_file), 
 		"An error occurred closing the queue file\n");
@@ -62,8 +86,6 @@ int main(int argc, char* argv[])
 		EXITWITHFAILUREIF(0 != thread_join_result, 
 			"An error occurred while joining a thread\n");
 	}
-
-	// TODO: destroy queue
 
 	fprintf(stdout, "Done!\n");
 

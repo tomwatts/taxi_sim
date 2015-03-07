@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define BUFFER_SIZE 80
 
@@ -14,11 +15,13 @@
 
 void *taxi_thread(void *arg);
 
-typedef struct {
+typedef struct taxirequest
+{ 
 	char requester[BUFFER_SIZE];
 	int order_time;
 	int duration;
+	struct taxirequest *next_request;
 } TaxiRequest;
 
-TaxiRequest *request_queue;
+TaxiRequest* request_queue;
 

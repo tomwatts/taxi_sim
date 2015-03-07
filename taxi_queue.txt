@@ -1,10 +1,10 @@
-0100	Bill	15
-0102	Dustin	13
-0105	James	20
-0107	Jose	9
-0110	Stan	4
-0115	Greg	10
-0117	Jeff	8
+0100	Bill	1
+0102	Dustin	1
+0105	James	1
+0107	Jose	2
+0110	Stan	2
+0115	Greg	2
+0117	Jeff	3
 0120	Edwin	3
-0122	Drew	4
+0122	Drew	3
 
