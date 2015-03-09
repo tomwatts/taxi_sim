@@ -8,15 +8,17 @@ void *taxi_thread_function(void *arg)
 	while(NULL != request_queue)
 	{
 		// Get request details and then free it
-		// TODO: this will likely be critical section
+		pthread_mutex_lock(&queue_mutex);
 		TaxiRequest *request = request_queue;
 		char *name = request -> requester;
 		int drive_time = request -> duration;
 		request_queue = request -> next_request;
+		pthread_mutex_unlock(&queue_mutex);
 		free(request);
 
 		fprintf(stdout, "Taxi %d picking up %s...\n", taxi_id, name);
 		sleep(drive_time);
+		fprintf(stdout, "Taxi %d dropping off %s...\n", taxi_id, name);
 	}
 
 	fprintf(stdout, "Taxi %d shutting down.\n", taxi_id);
@@ -25,14 +27,14 @@ void *taxi_thread_function(void *arg)
 
 int main(int argc, char* argv[])
 {
-	EXITWITHFAILUREIF(argc < 2, "Incorrect number of arguments\n");
+	EXITWITHFAILUREIF(argc != 3, "Incorrect number of arguments\n");
 
 	int n_taxis = atoi(argv[1]);
 	EXITWITHFAILUREIF(0 >= n_taxis, "Must specify more than zero taxis\n");
 
 	fprintf(stdout, "Using %d taxi(s)\n", n_taxis);
 
-	FILE *queue_file = fopen("taxi_queue.txt", "r+");
+	FILE *queue_file = fopen(argv[2], "r+");
 	EXITWITHFAILUREIF(!queue_file, 
 		"An error occurred closing the queue file\n");
 
@@ -66,6 +68,9 @@ int main(int argc, char* argv[])
 	EXITWITHFAILUREIF(0 != fclose(queue_file), 
 		"An error occurred closing the queue file\n");
 
+	EXITWITHFAILUREIF(0 != pthread_mutex_init(&queue_mutex, NULL),
+		"An error occurred on mutex init\n");
+		
 	pthread_t taxi_thread[n_taxis];
 	int i;
 	for(i = 0; i < n_taxis; i++)
@@ -86,6 +91,8 @@ int main(int argc, char* argv[])
 		EXITWITHFAILUREIF(0 != thread_join_result, 
 			"An error occurred while joining a thread\n");
 	}
+
+	pthread_mutex_destroy(&queue_mutex);
 
 	fprintf(stdout, "Done!\n");
 
