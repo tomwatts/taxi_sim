@@ -25,3 +25,5 @@ typedef struct taxirequest
 
 TaxiRequest* request_queue;
 
+pthread_mutex_t queue_mutex;
+
